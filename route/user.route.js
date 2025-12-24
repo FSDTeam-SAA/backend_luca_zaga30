@@ -3,6 +3,7 @@ import {
   getProfile,
   updateProfile,
   changePassword,
+  getCashflowDashboard,
   updateNotificationSettings,
   updateCurrencyPreference,
 } from "../controller/user.controller.js";
@@ -10,6 +11,8 @@ import { protect } from "../middleware/auth.middleware.js";
 import upload from "../middleware/multer.middleware.js";
 
 const router = express.Router();
+
+router.get("/cashflow-dashboard", protect, getCashflowDashboard);
 
 router.get("/profile", protect, getProfile);
 router.patch(

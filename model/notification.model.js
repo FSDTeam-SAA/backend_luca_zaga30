@@ -1,5 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import mongoosePaginate from "mongoose-paginate-v2";
 
 const notificationSchema = new Schema(
   {
@@ -19,16 +18,27 @@ const notificationSchema = new Schema(
     type: {
       type: String,
       enum: [
-        "price_increase",
-        "subscription_update",
-        "savings_alert",
-        "general",
+        "Home payment",
+        "Mortgage Payment",
+        "Rents Income",
+        "Bill",
+        "Water/Electricity Bills",
+        "AC Bills",
+        "Gas Bills",
+        "Property Type",
+        "Rent Due",
+        "Payment Reminder",
+        "Payment Received",
       ],
-      default: "general",
+      required: true,
     },
-    relatedProduct: {
+    relatedId: {
       type: Schema.Types.ObjectId,
-      ref: "Product",
+      refPath: "relatedModel",
+    },
+    relatedModel: {
+      type: String,
+      enum: ["Payment", "Property"],
     },
     isRead: {
       type: Boolean,
@@ -38,6 +48,7 @@ const notificationSchema = new Schema(
   { timestamps: true }
 );
 
-notificationSchema.plugin(mongoosePaginate);
+notificationSchema.index({ user: 1, createdAt: -1 });
+notificationSchema.index({ user: 1, isRead: 1 });
 
 export const Notification = mongoose.model("Notification", notificationSchema);

@@ -1,43 +1,68 @@
 import mongoose, { Schema } from "mongoose";
 
-const paymentInfoSchema = new Schema(
+const paymentSchema = new Schema(
   {
-    userId: {
+    user: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    planId: {
+    property: {
       type: Schema.Types.ObjectId,
-      ref: "SubscriptionPlan",
+      ref: "Property",
       required: true,
-    },
-    price: {
-      type: Number,
-      required: true,
-    },
-    transactionId: {
-      type: String,
-      required: true,
-    },
-    paymentStatus: {
-      type: String,
-      enum: ["pending", "complete", "failed"],
-      default: "pending",
-    },
-    paymentMethod: {
-      type: String,
-    },
-    isYearly: {
-      type: Boolean,
-      default: false,
     },
     type: {
       type: String,
-      default: "subscription",
+      enum: [
+        "Mortgage Payment",
+        "Home Payment",
+        "Rent Due",
+        "Bill",
+        "Service Charge",
+        "AC Bills",
+        "Water/Electricity Bills",
+        "Gas Bills",
+      ],
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    dueDate: {
+      type: Date,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["Pending", "Paid", "Overdue", "Rejected"],
+      default: "Pending",
+    },
+    receiverName: {
+      type: String,
+      required: true,
+    },
+    bank: {
+      type: String,
+    },
+    accountNumber: {
+      type: String,
+    },
+    proofFiles: [
+      {
+        public_id: { type: String },
+        url: { type: String },
+      },
+    ],
+    paidDate: {
+      type: Date,
+    },
+    notes: {
+      type: String,
     },
   },
   { timestamps: true }
 );
 
-export const PaymentInfo = mongoose.model("PaymentInfo", paymentInfoSchema);
+export const Payment = mongoose.model("Payment", paymentSchema);

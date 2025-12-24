@@ -4,6 +4,8 @@ import { uploadOnCloudinary } from "../utils/commonMethod.js";
 import AppError from "../errors/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
 import catchAsync from "../utils/catchAsync.js";
+import { Payment } from "../model/payment.model.js";
+import { Property } from "../model/property.model.js";
 
 // Get user profile
 export const getProfile = catchAsync(async (req, res) => {
@@ -85,6 +87,69 @@ export const changePassword = catchAsync(async (req, res) => {
     success: true,
     message: "Password changed successfully",
     data: user,
+  });
+});
+
+export const getCashflowDashboard = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+
+  // Total Properties
+  const totalProperties = await Property.countDocuments({ user: userId });
+
+  // Total Monthly Rental Income
+  const properties = await Property.find({ user: userId }).lean();
+  const totalMonthlyRent = properties.reduce((sum, prop) => {
+    if (prop.lease && prop.lease.monthlyRent) {
+      return sum + prop.lease.monthlyRent * (prop.ownershipPercentage / 100);
+    }
+    return sum;
+  }, 0);
+
+  // Upcoming Payments (next 30 days)
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+  const upcomingPayments = await Payment.find({
+    user: userId,
+    status: "Pending",
+    dueDate: { $lte: thirtyDaysFromNow },
+  })
+    .populate("property", "name address")
+    .sort({ dueDate: 1 });
+
+  // Cashflow by Country (percentage of rental income)
+  const countryMap = {};
+  let totalRentForPercentage = 0;
+
+  properties.forEach((prop) => {
+    if (prop.lease && prop.lease.monthlyRent) {
+      const country = prop.address.country || "Unknown";
+      const rentShare =
+        prop.lease.monthlyRent * (prop.ownershipPercentage / 100);
+      countryMap[country] = (countryMap[country] || 0) + rentShare;
+      totalRentForPercentage += rentShare;
+    }
+  });
+
+  const cashflowByCountry = Object.keys(countryMap).map((country) => ({
+    country,
+    percentage:
+      totalRentForPercentage > 0
+        ? Math.round((countryMap[country] / totalRentForPercentage) * 100)
+        : 0,
+    amount: countryMap[country],
+  }));
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Cashflow dashboard data fetched",
+    data: {
+      totalProperties,
+      monthlyRentalIncome: Math.round(totalMonthlyRent),
+      upcomingPayments,
+      cashflowByCountry,
+    },
   });
 });
 

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { v2 as cloudinary } from "cloudinary";
+import { Notification } from "../model/notification.model.js";
 
 // Generate a random OTP
 export const generateOTP = () => {
@@ -87,4 +88,22 @@ export const uploadMultipleOnCloudinary = async (files) => {
     public_id: result.public_id,
     secure_url: result.secure_url,
   }));
+};
+
+export const createNotification = async ({
+  user,
+  title,
+  message,
+  type,
+  relatedId = null,
+  relatedModel = null,
+}) => {
+  await Notification.create({
+    user,
+    title,
+    message,
+    type,
+    relatedId,
+    relatedModel,
+  });
 };
