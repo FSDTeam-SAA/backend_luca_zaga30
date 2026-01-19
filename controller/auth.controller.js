@@ -25,14 +25,14 @@ export const register = catchAsync(async (req, res) => {
   if (password !== confirmPassword) {
     throw new AppError(
       httpStatus.FORBIDDEN,
-      "Password and confirm password do not match"
+      "Password and confirm password do not match",
     );
   }
   const checkUser = await User.findOne({ email: email });
   if (checkUser)
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "Email already exists, please try another email"
+      "Email already exists, please try another email",
     );
 
   const user = await User.create({
@@ -56,13 +56,13 @@ export const register = catchAsync(async (req, res) => {
   const accessToken = createToken(
     jwtPayload,
     process.env.JWT_ACCESS_SECRET,
-    process.env.JWT_ACCESS_EXPIRES_IN
+    process.env.JWT_ACCESS_EXPIRES_IN,
   );
 
   const refreshToken = createToken(
     jwtPayload,
     process.env.JWT_REFRESH_SECRET,
-    process.env.JWT_REFRESH_EXPIRES_IN
+    process.env.JWT_REFRESH_EXPIRES_IN,
   );
   user.refreshToken = refreshToken;
   await user.save();
@@ -100,7 +100,7 @@ export const login = catchAsync(async (req, res) => {
     const otptoken = createToken(
       jwtPayloadOTP,
       process.env.OTP_SECRET,
-      process.env.OTP_EXPIRE
+      process.env.OTP_EXPIRE,
     );
     user.verificationInfo.token = otptoken;
     await user.save();
@@ -121,13 +121,13 @@ export const login = catchAsync(async (req, res) => {
   const accessToken = createToken(
     jwtPayload,
     process.env.JWT_ACCESS_SECRET,
-    process.env.JWT_ACCESS_EXPIRES_IN
+    process.env.JWT_ACCESS_EXPIRES_IN,
   );
 
   const refreshToken = createToken(
     jwtPayload,
     process.env.JWT_REFRESH_SECRET,
-    process.env.JWT_REFRESH_EXPIRES_IN
+    process.env.JWT_REFRESH_EXPIRES_IN,
   );
 
   user.refreshToken = refreshToken;
@@ -156,91 +156,92 @@ export const login = catchAsync(async (req, res) => {
 
 export const forgetPassword = catchAsync(async (req, res) => {
   const { email } = req.body;
-  const user = await User.isUserExistsByEmail(email);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
+
+  const user = await User.findOne({ email });
+  if (!user) throw new AppError(404, "User not found");
+
   const otp = generateOTP();
-  const jwtPayloadOTP = {
-    otp: otp,
-  };
 
-  const otptoken = createToken(
-    jwtPayloadOTP,
-    process.env.OTP_SECRET,
-    process.env.OTP_EXPIRE
+  const resetToken = createToken(
+    { id: user._id },
+    process.env.RESET_PASSWORD_SECRET,
+    "10m",
   );
-  user.password_reset_token = otptoken;
+
+  user.passwordResetOTP = otp;
+  user.passwordResetOTPExpiry = Date.now() + 10 * 60 * 1000;
+  user.passwordResetVerified = false;
+  user.password_reset_token = resetToken; // stored only
+
   await user.save();
 
-  /////// TODO: SENT EMAIL MUST BE DONE
-  sendEmail(user.email, "Reset Password", `Your OTP is ${otp}`);
+  await sendEmail(user.email, "Reset Password", `Your OTP is ${otp}`);
 
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: 200,
     success: true,
-    message: "OTP sent to your email",
-    data: "",
-  });
-});
-
-export const resetPassword = catchAsync(async (req, res) => {
-  const { password, otp, email } = req.body;
-  const user = await User.isUserExistsByEmail(email);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
-  if (!user.password_reset_token) {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Password reset token is invalid"
-    );
-  }
-  const verify = await verifyToken(
-    user.password_reset_token,
-    process.env.OTP_SECRET
-  );
-  if (verify.otp !== otp) {
-    throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
-  }
-  user.password = password;
-  await user.save();
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Password reset successfully",
+    message: "OTP sent to email",
     data: {},
   });
 });
 
-export const verifyEmail = catchAsync(async (req, res) => {
-  const { email, otp } = req.body;
-  const user = await User.isUserExistsByEmail(email);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
-  }
-  if (otp) {
-    const savedOTP = verifyToken(
-      user.verificationInfo.token,
-      process.env.OTP_SECRET
-    );
-    console.log(savedOTP);
-    if (otp === savedOTP.otp) {
-      user.verificationInfo.token = "";
-      await user.save();
+export const resetPassword = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
 
-      sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "User verified",
-        data: "",
-      });
-    } else {
-      throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
-    }
-  } else {
-    throw new AppError(httpStatus.BAD_REQUEST, "OTP is required");
+  if (!email || !password) {
+    throw new AppError(400, "Email and password are required");
   }
+
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) throw new AppError(404, "User not found");
+
+  if (!user.passwordResetVerified) {
+    throw new AppError(403, "OTP not verified");
+  }
+
+  user.password = password;
+  user.passwordResetOTP = undefined;
+  user.passwordResetOTPExpiry = undefined;
+  user.passwordResetVerified = false;
+  user.password_reset_token = ""; // cleanup
+
+  await user.save();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Password reset successful",
+    data: {},
+  });
+});
+
+export const verifyOTP = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    throw new AppError(400, "Email and OTP are required");
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) throw new AppError(404, "User not found");
+
+  if (
+    !user.passwordResetOTP ||
+    user.passwordResetOTP !== otp ||
+    user.passwordResetOTPExpiry < Date.now()
+  ) {
+    throw new AppError(400, "Invalid or expired OTP");
+  }
+
+  user.passwordResetVerified = true;
+  await user.save();
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "OTP verified successfully",
+    data: {},
+  });
 });
 
 export const changePassword = catchAsync(async (req, res) => {
@@ -248,13 +249,13 @@ export const changePassword = catchAsync(async (req, res) => {
   if (!oldPassword || !newPassword) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "Old password and new password are required"
+      "Old password and new password are required",
     );
   }
   if (oldPassword === newPassword) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "Old password and new password cannot be same"
+      "Old password and new password cannot be same",
     );
   }
   const user = await User.findById({ _id: req.user?._id });
@@ -293,13 +294,13 @@ export const refreshToken = catchAsync(async (req, res) => {
   const accessToken = createToken(
     jwtPayload,
     process.env.JWT_ACCESS_SECRET,
-    process.env.JWT_ACCESS_EXPIRES_IN
+    process.env.JWT_ACCESS_EXPIRES_IN,
   );
 
   const refreshToken1 = createToken(
     jwtPayload,
     process.env.JWT_REFRESH_SECRET,
-    process.env.JWT_REFRESH_EXPIRES_IN
+    process.env.JWT_REFRESH_EXPIRES_IN,
   );
   user.refreshToken = refreshToken1;
   await user.save();
@@ -317,7 +318,7 @@ export const logout = catchAsync(async (req, res) => {
   const user1 = await User.findByIdAndUpdate(
     user,
     { refreshToken: "" },
-    { new: true }
+    { new: true },
   );
   sendResponse(res, {
     statusCode: httpStatus.OK,

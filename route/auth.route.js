@@ -7,7 +7,7 @@ import {
   refreshToken,
   register,
   resetPassword,
-  verifyEmail,
+  verifyOTP,
 } from "../controller/auth.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 
@@ -15,7 +15,7 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
-router.post("/verify", verifyEmail);
+router.post("/verify", verifyOTP);
 router.post("/forget", forgetPassword);
 router.post("/reset-password", resetPassword);
 router.post("/change-password", protect, changePassword);
