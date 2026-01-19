@@ -5,12 +5,12 @@ export const sendEmail = async (to,subject, html) => {
     port: 587,
     secure: false,
     auth: {
-      user: 'tahsin.bdcalling@gmail.com',
-      pass: 'lcnt cxiw pcui vikv',
+      user: 'aliulakon8@gmail.com',
+      pass: 'rxwx wnlb dbyd qxub',
     },
   });
   await transporter.sendMail({
-    from: 'tahsin.bdcalling@gmail.com', // sender address
+    from: 'aliulakon8@gmail.com', // sender address
     to,
     subject: subject? subject:  'Password change Link : change it by 10 minutes',
     html,
