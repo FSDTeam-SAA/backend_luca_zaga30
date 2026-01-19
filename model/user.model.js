@@ -34,7 +34,11 @@ const userSchema = new Schema(
       verified: { type: Boolean, default: false },
       token: { type: String, default: "" },
     },
-    password_reset_token: { type: String, default: "" },
+    passwordResetOTP: { type: String },
+    passwordResetOTPExpiry: { type: Date },
+    passwordResetVerified: { type: Boolean, default: false },
+    password_reset_token: { type: String },
+
     refreshToken: { type: String, default: "" },
     review: [
       {
@@ -91,7 +95,7 @@ const userSchema = new Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.pre("save", async function (next) {
@@ -114,7 +118,7 @@ userSchema.statics.isOTPVerified = async function (id) {
 
 userSchema.statics.isPasswordMatched = async function (
   plainTextPassword,
-  hashPassword
+  hashPassword,
 ) {
   return await bcrypt.compare(plainTextPassword, hashPassword);
 };
