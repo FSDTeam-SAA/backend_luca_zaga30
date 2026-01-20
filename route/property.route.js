@@ -1,6 +1,8 @@
 import express from "express";
 import {
   getProperties,
+  updateProperty,
+  getPropertyDetails,
   addProperty,
 } from "../controller/property.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
@@ -14,6 +16,8 @@ const uploadFields = upload.fields([
 ]);
 
 router.get("/", protect, getProperties);
+router.get("/:propertyId", protect, getPropertyDetails);
+router.put("/:propertyId", protect, uploadFields, updateProperty);
 router.post("/add", protect, uploadFields, addProperty);
 
 export default router;
