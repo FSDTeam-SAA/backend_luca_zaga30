@@ -10,7 +10,7 @@ import { Property } from "../model/property.model.js";
 // Get user profile
 export const getProfile = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id).select(
-    "-password -refreshToken -verificationInfo -password_reset_token"
+    "-password -refreshToken -verificationInfo -password_reset_token",
   );
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
@@ -30,7 +30,7 @@ export const updateProfile = catchAsync(async (req, res) => {
 
   // Find user
   const user = await User.findById(req.user._id).select(
-    "-password -refreshToken -verificationInfo -password_reset_token"
+    "-password -refreshToken -verificationInfo -password_reset_token",
   );
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
@@ -68,14 +68,14 @@ export const changePassword = catchAsync(async (req, res) => {
   if (newPassword !== confirmPassword) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "New password and confirm password do not match"
+      "New password and confirm password do not match",
     );
   }
 
   if (!(await User.isPasswordMatched(currentPassword, user.password))) {
     throw new AppError(
       httpStatus.UNAUTHORIZED,
-      "Current password is incorrect"
+      "Current password is incorrect",
     );
   }
 
@@ -93,19 +93,48 @@ export const changePassword = catchAsync(async (req, res) => {
 export const getCashflowDashboard = catchAsync(async (req, res) => {
   const userId = req.user._id;
 
-  // Total Properties
-  const totalProperties = await Property.countDocuments({ user: userId });
-
-  // Total Monthly Rental Income
   const properties = await Property.find({ user: userId }).lean();
-  const totalMonthlyRent = properties.reduce((sum, prop) => {
-    if (prop.lease && prop.lease.monthlyRent) {
+
+  const totalProperties = properties.length;
+
+  const portfolioValue = properties.reduce((sum, prop) => {
+    return sum + prop.purchasePrice * (prop.ownershipPercentage / 100);
+  }, 0);
+
+  let rentedCount = 0;
+
+  const monthlyRentalIncome = properties.reduce((sum, prop) => {
+    if (prop.lease?.monthlyRent) {
+      rentedCount++;
       return sum + prop.lease.monthlyRent * (prop.ownershipPercentage / 100);
     }
     return sum;
   }, 0);
 
-  // Upcoming Payments (next 30 days)
+  const occupancyRate =
+    totalProperties > 0 ? Math.round((rentedCount / totalProperties) * 100) : 0;
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+
+  const expenses = await Payment.find({
+    user: userId,
+    type: {
+      $in: [
+        "Mortgage Payment",
+        "Bill",
+        "Service Charge",
+        "AC Bills",
+        "Water/Electricity Bills",
+        "Gas Bills",
+      ],
+    },
+    dueDate: { $gte: startOfMonth },
+    status: { $in: ["Pending", "Paid"] },
+  }).lean();
+
+  const totalExpenses = expenses.reduce((sum, p) => sum + p.amount, 0);
+
   const thirtyDaysFromNow = new Date();
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
@@ -114,41 +143,54 @@ export const getCashflowDashboard = catchAsync(async (req, res) => {
     status: "Pending",
     dueDate: { $lte: thirtyDaysFromNow },
   })
-    .populate("property", "name address")
-    .sort({ dueDate: 1 });
+    .populate("property", "name")
+    .sort({ dueDate: 1 })
+    .lean();
 
-  // Cashflow by Country (percentage of rental income)
+  const formattedUpcomingPayments = upcomingPayments.map((p) => ({
+    propertyName: p.property?.name || "Unknown",
+    type: p.type,
+    amount: p.amount,
+    dueDate: p.dueDate,
+  }));
+
   const countryMap = {};
-  let totalRentForPercentage = 0;
+  let totalRent = 0;
 
   properties.forEach((prop) => {
-    if (prop.lease && prop.lease.monthlyRent) {
-      const country = prop.address.country || "Unknown";
-      const rentShare =
-        prop.lease.monthlyRent * (prop.ownershipPercentage / 100);
-      countryMap[country] = (countryMap[country] || 0) + rentShare;
-      totalRentForPercentage += rentShare;
+    if (prop.lease?.monthlyRent) {
+      const country = prop.address.country;
+      const rent = prop.lease.monthlyRent * (prop.ownershipPercentage / 100);
+
+      countryMap[country] = (countryMap[country] || 0) + rent;
+      totalRent += rent;
     }
   });
 
   const cashflowByCountry = Object.keys(countryMap).map((country) => ({
     country,
     percentage:
-      totalRentForPercentage > 0
-        ? Math.round((countryMap[country] / totalRentForPercentage) * 100)
-        : 0,
-    amount: countryMap[country],
+      totalRent > 0 ? Math.round((countryMap[country] / totalRent) * 100) : 0,
+    amount: Math.round(countryMap[country]),
   }));
+
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Cashflow dashboard data fetched",
+    message: "Dashboard data fetched successfully",
     data: {
-      totalProperties,
-      monthlyRentalIncome: Math.round(totalMonthlyRent),
-      upcomingPayments,
+      summary: {
+        portfolioValue: Math.round(portfolioValue),
+        monthlyRentalIncome: Math.round(monthlyRentalIncome),
+        occupancyRate,
+      },
+      incomeVsExpense: {
+        rentalIncome: Math.round(monthlyRentalIncome),
+        expenses: Math.round(totalExpenses),
+      },
       cashflowByCountry,
+      upcomingPayments: formattedUpcomingPayments,
     },
   });
 });
