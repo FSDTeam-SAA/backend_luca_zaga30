@@ -174,7 +174,6 @@ export const getCashflowDashboard = catchAsync(async (req, res) => {
     amount: Math.round(countryMap[country]),
   }));
 
-
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
@@ -184,6 +183,7 @@ export const getCashflowDashboard = catchAsync(async (req, res) => {
         portfolioValue: Math.round(portfolioValue),
         monthlyRentalIncome: Math.round(monthlyRentalIncome),
         occupancyRate,
+        totalProperties: totalProperties,
       },
       incomeVsExpense: {
         rentalIncome: Math.round(monthlyRentalIncome),
