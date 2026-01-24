@@ -111,6 +111,8 @@ export const getCashflowDashboard = catchAsync(async (req, res) => {
     return sum;
   }, 0);
 
+  const annualRentalIncome = monthlyRentalIncome * 12;
+
   const occupancyRate =
     totalProperties > 0 ? Math.round((rentedCount / totalProperties) * 100) : 0;
 
@@ -182,6 +184,7 @@ export const getCashflowDashboard = catchAsync(async (req, res) => {
       summary: {
         portfolioValue: Math.round(portfolioValue),
         monthlyRentalIncome: Math.round(monthlyRentalIncome),
+        annualRentalIncome: Math.round(annualRentalIncome),
         occupancyRate,
         totalProperties: totalProperties,
       },
