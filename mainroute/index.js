@@ -5,6 +5,7 @@ import userRoute from "../route/user.route.js";
 import notificationRoute from "../route/notification.route.js";
 import propertyRoute from "../route/property.route.js";
 import paymentRoute from "../route/payment.route.js";
+import adminRoute from "../route/admin.route.js";
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use("/user", userRoute);
 router.use("/notifications", notificationRoute);
 router.use("/properties", propertyRoute);
 router.use("/payments", paymentRoute);
+router.use("/admin", adminRoute);
 
 export default router;
