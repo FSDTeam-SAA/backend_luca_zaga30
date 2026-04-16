@@ -4,6 +4,7 @@ import {
   updateProperty,
   getPropertyDetails,
   addProperty,
+  deletePropertyDetails
 } from "../controller/property.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
 import upload from "../middleware/multer.middleware.js";
@@ -17,6 +18,7 @@ const uploadFields = upload.fields([
 
 router.get("/", protect, getProperties);
 router.get("/:propertyId", protect, getPropertyDetails);
+router.delete("/:propertyId", protect, deletePropertyDetails);
 router.put("/:propertyId", protect, uploadFields, updateProperty);
 router.post("/add", protect, uploadFields, addProperty);
 

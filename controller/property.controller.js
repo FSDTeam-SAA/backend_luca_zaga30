@@ -330,3 +330,17 @@ export const getPropertyDetails = catchAsync(async (req, res) => {
     data: property,
   });
 });
+
+// Delete property details
+export const deletePropertyDetails = catchAsync(async (req, res) => {
+  const propertyId = req.params.id;
+  const property = await Property.findByIdAndDelete(propertyId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Property Deleted successfully",
+    data: "",
+  });
+});
+
