@@ -315,7 +315,7 @@ export const updateProperty = catchAsync(async (req, res) => {
 
 // get single property details
 export const getPropertyDetails = catchAsync(async (req, res) => {
-  const propertyId = req.params.id;
+  const propertyId = req.params.propertyId;
   const property = await Property.findById(propertyId).populate(
     "user ",
     "name email phone avatar",
@@ -333,7 +333,7 @@ export const getPropertyDetails = catchAsync(async (req, res) => {
 
 // Delete property details
 export const deletePropertyDetails = catchAsync(async (req, res) => {
-  const propertyId = req.params.id;
+  const propertyId = req.params.propertyId;
   const property = await Property.findByIdAndDelete(propertyId);
 
   sendResponse(res, {
