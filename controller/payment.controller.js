@@ -112,3 +112,20 @@ export const updatePaymentStatus = catchAsync(async (req, res) => {
     data: payment,
   });
 });
+
+// Delete a payment
+export const deletePayment = catchAsync(async (req, res) => {
+  const payment = await Payment.findOneAndDelete({
+    _id: req.params.id,
+    user: req.user._id,
+  });
+
+  if (!payment) throw new AppError(httpStatus.NOT_FOUND, "Payment not found");
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Payment deleted successfully",
+    data: null,
+  });
+});
