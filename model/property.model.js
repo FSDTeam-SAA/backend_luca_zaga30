@@ -14,6 +14,8 @@ const propertySchema = new Schema(
     address: {
       country: { type: String, required: true },
       city: { type: String, required: true },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
     },
     propertyType: {
       type: String,
