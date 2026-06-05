@@ -90,6 +90,7 @@ const userSchema = new Schema(
         "BDT", // Taka
         "JPY", // Yen
         "CNY", // Yuan
+        "BTC", // Bitcoin
       ],
       default: "USD",
       required: true,
